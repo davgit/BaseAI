@@ -41,7 +41,6 @@ export async function embedDoc({
 		}
 
 		// 1- Check memory exists.
-		// s.start('Validating memory...');
 		const { memoryName: validMemoryName, documentName: validDocumentName } =
 			validatedocEmbedSchema({
 				memoryName,
