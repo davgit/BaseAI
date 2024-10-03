@@ -57,15 +57,21 @@ export async function embedDoc({
 			process.exit(1);
 		}
 
+		// If it is customDirTracked memory, replace / with - in the doc name.
+		// Otherwise keep the doc name as it is, i.e., files are in /documents directory.
+		const docNameToSearch = validDocumentName
+			.replace(/\//g, '-') // Replace / with - in the doc name.
+			.replace(/^[.-]+/, ''); // Remove leading . or - from the doc name.
+
 		// Find the document file.
 		const memoryFile = memoryFiles.find(
-			file => file.name === validDocumentName
+			file => file.name === docNameToSearch
 		);
 
 		if (!memoryFile) {
 			s.stop(`Stopped!`);
 			p.cancel(
-				`Doc: ${color.cyan(validDocumentName)} not found in memory ${validMemoryName}`
+				`Doc: ${color.cyan(validDocumentName)} not found in memory ${validMemoryName}. If this is a custom directory-tracked memory, please provide the full relative path to the document from the tracked directory.`
 			);
 			process.exit(1);
 		}
