@@ -72,8 +72,6 @@ async function deploy({
 		}
 
 		if (memory && memory.length > 0) {
-			await handleGitSyncMemories(memory);
-
 			await deployMemories({
 				spinner,
 				memory,
@@ -466,6 +464,7 @@ async function deployMemory({
 	overwrite: boolean;
 }): Promise<void> {
 	const filePath = path.join(memoryDir, memoryName);
+	const memoryNameWithoutExt = memoryName.split('.')[0]; // Remove .json extension
 
 	spinner.start(`Processing memory: ${memoryName}`);
 	try {
@@ -478,10 +477,33 @@ async function deployMemory({
 		}
 
 		p.log.step(`Processing documents for memory: ${memoryName}`);
-		const memoryNameWithoutExt = memoryName.split('.')[0]; // Remove .json extension
-		const memoryDocs = await loadMemoryFiles(memoryNameWithoutExt);
 
-		if (!memoryDocs || memoryDocs.length === 0) {
+		let filesToDeploy: string[] = [];
+		let memoryDocs: MemoryDocumentI[] = [];
+
+		// Git sync memories
+		if (memoryObject.config.useGitRepo) {
+			// Get names of files to deploy, i.e., changed or new files
+			filesToDeploy = await handleGitSyncMemories({
+				memoryName,
+				config: memoryObject.config
+			});
+
+			// Load all documents contents for the memory
+			memoryDocs = await loadMemoryFiles(memoryNameWithoutExt);
+
+			// Filter memoryDocs to only include documents in filesToDeploy
+			// i.e., changed or new files
+			memoryDocs.filter(doc => filesToDeploy.includes(doc.name));
+		}
+
+		// Non git-sync memories
+		else {
+			memoryDocs = await loadMemoryFiles(memoryNameWithoutExt);
+			filesToDeploy = memoryDocs.map(doc => doc.name);
+		}
+
+		if (filesToDeploy.length === 0) {
 			spinner.stop(
 				`No documents found for memory: ${memoryName}. Skipping.`
 			);
@@ -490,6 +512,8 @@ async function deployMemory({
 
 		spinner.stop(`Processed memory: ${memoryName.split('.')[0]}`);
 		spinner.start(`Deploying memory: ${memoryObject.name.split('.')[0]}`);
+
+		// TODO: Handle Git-sync memories from here
 
 		try {
 			await upsertMemory({
